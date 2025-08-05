@@ -177,6 +177,7 @@
             border-radius: 0.5rem;
             font-size: 1rem;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            color: #374151; /* Ensures text is visible on light background */
         }
 
         .form-input:focus {
@@ -197,6 +198,15 @@
 
         .form-success {
             background: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        
+        .form-submission-error {
+            background: #ef4444;
             color: white;
             padding: 1rem;
             border-radius: 0.5rem;
@@ -728,7 +738,27 @@
     <!-- End Footer -->
 
     <!-- Start JavaScript -->
-    <script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyC9YLLWA7hb7A23y7g5w87tfPJ-j-mGJlc",
+          authDomain: "lakeside-health-2eed9.firebaseapp.com",
+          projectId: "lakeside-health-2eed9",
+          storageBucket: "lakeside-health-2eed9.firebasestorage.app",
+          messagingSenderId: "118115163034",
+          appId: "1:118115163034:web:111a7bb9ba56fd28787823",
+          measurementId: "G-HS420T4JVC"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+
         // Mobile menu functionality
         const mobileMenuButton = document.getElementById('mobile-menu-button');
         const mobileMenu = document.getElementById('mobile-menu');
@@ -845,6 +875,10 @@
         function showSuccess(message) {
             formStatus.innerHTML = `<div class="form-success">${message}</div>`;
         }
+        
+        function showSubmissionError(message) {
+            formStatus.innerHTML = `<div class="form-submission-error">${message}</div>`;
+        }
 
         // Real-time validation
         ['name', 'email', 'message'].forEach(fieldId => {
@@ -879,12 +913,13 @@
         });
 
         // Form submission
-        contactForm.addEventListener('submit', (e) => {
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const formData = new FormData(contactForm);
             const name = formData.get('name');
             const email = formData.get('email');
+            const company = formData.get('company');
             const message = formData.get('message');
 
             // Clear previous errors
@@ -910,19 +945,31 @@
             }
 
             if (!hasErrors) {
-                // Simulate form submission (in real implementation, this would send to server)
                 const submitButton = contactForm.querySelector('button[type="submit"]');
                 const originalText = submitButton.textContent;
 
                 submitButton.textContent = 'Sending...';
                 submitButton.disabled = true;
 
-                setTimeout(() => {
-                    showSuccess('Thank you for your message! We'll get back to you within 24 hours.');
+                try {
+                    // Add a new document with a generated id.
+                    const docRef = await addDoc(collection(db, "contacts"), {
+                        name: name,
+                        email: email,
+                        company: company,
+                        message: message,
+                        submittedAt: serverTimestamp()
+                    });
+                    console.log("Document written with ID: ", docRef.id);
+                    showSuccess('Thank you for your message! We\'ll get back to you within 24 hours.');
                     contactForm.reset();
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                    showSubmissionError('Sorry, there was an error sending your message. Please try again later.');
+                } finally {
                     submitButton.textContent = originalText;
                     submitButton.disabled = false;
-                }, 2000);
+                }
             }
         });
 
